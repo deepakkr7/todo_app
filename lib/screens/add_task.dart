@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:todo1/model/todomodel.dart';
-import 'package:todo1/services/database.dart';
 import 'package:intl/intl.dart';
+import 'package:todo1/model/todomodel.dart';
+import 'package:todo1/services/api_services.dart';
+import 'package:todo1/services/database.dart';
 
 class AddTaskScreen extends StatefulWidget {
   final Task? task;
@@ -17,6 +18,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   late String title;
   late String description;
   DateTime? dueDate;
+  final APIService _apiService = APIService();
 
   @override
   void initState() {
@@ -88,7 +90,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     }
   }
 
-  void _saveTask() {
+  void _saveTask() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       Task task = Task(
@@ -98,12 +100,30 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         isCompleted: widget.task?.isCompleted ?? false,
         id: widget.task?.id,
       );
+
       if (widget.task == null) {
-        TaskDatabase.instance.insertTask(task);
+        await TaskDatabase.instance.insertTask(task);
+        await _syncTaskToAPI(task);
       } else {
-        TaskDatabase.instance.updateTask(task);
+        await TaskDatabase.instance.updateTask(task);
+        await _syncTaskToAPI(task);
       }
+
       Navigator.pop(context);
+    }
+  }
+
+
+  Future<void> _syncTaskToAPI(Task task) async {
+    try {
+      await _apiService.postTask(task);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Task synced successfully with API!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sync task with API: $e')),
+      );
     }
   }
 }

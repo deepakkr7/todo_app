@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:todo1/model/todomodel.dart';
 import 'package:todo1/screens/add_task.dart';
+import 'package:todo1/services/api_services.dart';
 import 'package:todo1/services/database.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -10,6 +11,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<Task>> _taskList;
+  final APIService _apiservice=APIService();
 
   @override
   void initState() {
@@ -92,7 +94,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _syncTasksWithAPI() {
+  void _syncTasksWithAPI() async{
+    try {
+      List<Task> apiTasks = await _apiservice.fetchTask();
 
+      for (Task task in apiTasks) {
+        await TaskDatabase.instance.insertTask(task);
+      }
+
+
+      _refreshTasks();
+
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Tasks synced successfully with API!')),
+      );
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sync tasks with API: $e')),
+      );
+    }
   }
 }
